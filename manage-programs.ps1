@@ -1,5 +1,20 @@
 ﻿#switch menu that installs or uninstalls programs 
 
+
+#runs script as administrator when right clicking on file to run with powershell 
+<#
+$filePath = 'C:\IT\Scripts\manage-programs.ps1'
+
+if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Write-Host "Restarting script as Administrator..." -ForegroundColor Yellow
+    Start-Process powershell.exe -ArgumentList "-NoExit", "-NoProfile", "-ExecutionPolicy Bypass", "-File", "`"$filePath`"" -Verb RunAs
+    exit
+}
+
+
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force#>
+
+
 function installs{
 
 #parameters to call functions in the main switch 
@@ -14,23 +29,33 @@ $session = New-PSSession -ComputerName $computer
 
     write-host "Starting installs on $computer..." -ForegroundColor Green
 
-foreach($program in $programs){
+        
+        foreach($program in $programs){
 
 #run through programs array to install apps
-invoke-command -session $session -ArgumentList $program {param($app)
+        invoke-command -session $session -ArgumentList $program {param($app)
 
 #accepts all agreements 
-winget install --id $app --accept-source-agreements --accept-package-agreements
+        winget install --id $app --accept-source-agreements --accept-package-agreements
+
 
 }
 }
+try{
+
+write-host "removing session... on $computer" -ForegroundColor red
+
+start-sleep -Seconds 2
+
+Get-PSSession -ComputerName $computer | Disconnect-PSSession | Remove-PSSession
+
+}catch{
+
+Write-Host "unable to remove session, ending all sessions..."
+
+get-pssession | remove-pssession 
+
 }
-
-#ends all psessions 
-if ($null -ne $session) {
-
-Remove-PSSession $session 
-
 }
 }
 
@@ -51,24 +76,34 @@ $session = New-PSSession -ComputerName $computer
 
     write-host "Starting uninstalls on $computer..." -ForegroundColor Green
 
-foreach($program in $programs){
+        
+        foreach($program in $programs){
 
 #run through programs array to uninstall apps
-invoke-command -session $session -ArgumentList $program {param($app)
+        invoke-command -session $session -ArgumentList $program {param($app)
 
-winget uninstall --id $app --accept-source-agreements
+        winget uninstall --id $app --accept-source-agreements
+
+}
+}
+try{
+
+write-host "removing session... on $computer" -ForegroundColor red
+
+start-sleep -Seconds 2
+
+Get-PSSession -ComputerName $computer | Disconnect-PSSession | Remove-PSSession
+
+}catch{
+
+Write-Host "unable to remove session, ending all sessions..."
+
+get-pssession | remove-pssession 
 
 }
 }
 }
 
-#ends all psessions 
-if ($null -ne $session) {
-
-Remove-PSSession $session 
-
-}
-}
 
 
 #main switch function 
